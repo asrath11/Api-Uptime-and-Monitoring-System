@@ -1,6 +1,8 @@
 import express from "express";
 import morgan from "morgan";
 
+import authRouter from "./features/auth/auth.route";
+import { errorHandler } from "./middleware/error.middleware";
 export const app = express();
 
 // Middleware
@@ -14,4 +16,7 @@ app.get("/api/health", (req, res) => {
   });
 });
 
+app.use('/api/auth', authRouter);
+
+app.use(errorHandler);
 
