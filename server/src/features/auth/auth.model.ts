@@ -29,6 +29,7 @@ const userSchema = new Schema<IAuth>(
     password: {
       type: String,
       required: true,
+      select: false,
     },
   },
   {
@@ -49,4 +50,6 @@ userSchema.methods.comparePassword = async function (userPassword: string) {
   return bcrypt.compare(userPassword, this.password);
 }
 
-export const UserModel = mongoose.model<IAuth>("User", userSchema);
+const User = mongoose.model<IAuth>("User", userSchema);
+
+export default User;
