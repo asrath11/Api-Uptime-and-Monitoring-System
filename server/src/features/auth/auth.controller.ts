@@ -1,8 +1,8 @@
 import { Request, Response } from "express";
-import { RegisterInput, LoginInput } from "./auth.validation";
-import { asyncWrapper } from "../../utils/asyncWrapper";
-import User from "./auth.model";
-import { generateToken } from "../../utils/jwt";
+import { RegisterInput, LoginInput } from "@/features/auth/auth.schema.js";
+import { asyncWrapper } from "@/utils/asyncWrapper.js";
+import User from "@/features/auth/auth.model.js";
+import { generateToken, clearToken } from "@/utils/jwt.js";
 
 export const register = asyncWrapper(async (req: Request, res: Response) => {
   const { name, email, password } = req.body as RegisterInput;
@@ -24,7 +24,7 @@ export const register = asyncWrapper(async (req: Request, res: Response) => {
   });
 });
 
-export const signIn = asyncWrapper(async (req: Request, res: Response) => {
+export const login = asyncWrapper(async (req: Request, res: Response) => {
   const { email, password } = req.body as LoginInput;
   const user = await User.findOne({ email }).select("+password");
   const isPasswordMatched = user && (await user.comparePassword(password));
@@ -39,5 +39,13 @@ export const signIn = asyncWrapper(async (req: Request, res: Response) => {
     success: true,
     message: "User logged in successfully",
     token,
+  });
+});
+
+export const logout = asyncWrapper(async (req: Request, res: Response) => {
+  clearToken(res);
+  res.status(200).json({
+    success: true,
+    message: "User logged out successfully",
   });
 });

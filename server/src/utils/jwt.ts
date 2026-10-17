@@ -1,6 +1,6 @@
 import { Response } from "express";
 import jwt,{type SignOptions} from 'jsonwebtoken';
-import { JWT_SECRET,JWT_EXPIRES_IN} from '../config/consonants';
+import { JWT_SECRET,JWT_EXPIRES_IN} from '@/config/consonants.js';
 
 
 export const generateToken = (res:Response,userId: string): string => {

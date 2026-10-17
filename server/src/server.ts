@@ -1,7 +1,7 @@
 import "dotenv/config";
-import { app } from "./app";
-import { connectDB } from "./config/database";
-import { PORT } from "./config/consonants";
+import { app } from "@/app.js";
+import { connectDB } from "@/config/database.js";
+import { PORT } from "@/config/consonants.js";
 
 const startServer = async () => {
   try {

@@ -5,7 +5,6 @@
 
     "rootDir": "./src",
     "outDir": "./dist",
-
     "types": ["node"],
 
     "strict": true,
@@ -13,7 +12,10 @@
     "forceConsistentCasingInFileNames": true,
 
     "sourceMap": true,
-    "skipLibCheck": true
+    "skipLibCheck": true,
+    "paths": {
+      "@/*": ["./src/*"]
+    }
   },
   "include": ["src/**/*", "src/config/database.ts"],
   "exclude": ["node_modules", "dist"]

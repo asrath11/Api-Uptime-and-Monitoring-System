@@ -1,9 +1,9 @@
 import { Request, Response, NextFunction } from "express";
 import jwt from "jsonwebtoken";
 
-import { asyncWrapper } from "../utils/asyncWrapper";
-import  User from "../features/auth/auth.model";
-import { JWT_SECRET } from "../config/consonants";
+import { asyncWrapper } from "@/utils/asyncWrapper.js";
+import User from "@/features/auth/auth.model.js";
+import { JWT_SECRET } from "@/config/consonants.js";
 
 declare global {
   namespace Express {
@@ -17,7 +17,7 @@ declare global {
   }
 }
 
-export const authenticateUser = asyncWrapper(
+export const requireAuth = asyncWrapper(
   async (req: Request, res: Response, next: NextFunction) => {
     const token = req.cookies.jwt;
 
@@ -57,10 +57,7 @@ export const authenticateUser = asyncWrapper(
       throw error;
     }
 
-    const user = await User.findById(
-      decoded.userId,
-      "_id name email"
-    );
+    const user = await User.findById(decoded.userId, "_id name email");
 
     if (!user) {
       res.status(401).json({
@@ -77,5 +74,5 @@ export const authenticateUser = asyncWrapper(
     };
 
     next();
-  }
+  },
 );
