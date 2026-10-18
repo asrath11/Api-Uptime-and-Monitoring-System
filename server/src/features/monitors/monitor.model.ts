@@ -1,12 +1,12 @@
 import mongoose, { Document } from "mongoose";
 
-interface IMonitor extends Document {
+export interface IMonitor extends Document {
   userId: mongoose.Types.ObjectId;
   name: string;
   url: string;
   method: "GET" | "POST" | "PUT" | "DELETE";
-  interval: number;
-  timeout: number;
+  intervalSeconds: number;
+  timeoutSeconds: number;
   expectedStatusCode: number;
   currentStatus: "UP" | "DOWN" | "UNKNOWN";
   lastCheckedAt: Date | null;
@@ -36,12 +36,12 @@ const monitorSchema = new mongoose.Schema<IMonitor>(
       default: "GET",
       required: true,
     },
-    interval: {
+    intervalSeconds: {
       type: Number,
       required: true,
       min: 1,
     },
-    timeout: {
+    timeoutSeconds: {
       type: Number,
       required: true,
       min: 1,

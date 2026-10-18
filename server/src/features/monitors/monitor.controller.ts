@@ -8,15 +8,21 @@ import { asyncWrapper } from "@/utils/asyncWrapper.js";
 
 export const createMonitor = asyncWrapper(
   async (req: Request, res: Response) => {
-    const { name, url, method, interval, timeout, expectedStatusCode } =
-      req.body as CreateMonitorInput;
+    const {
+      name,
+      url,
+      method,
+      intervalSeconds,
+      timeoutSeconds,
+      expectedStatusCode,
+    } = req.body as CreateMonitorInput;
     const userId = req.user?._id;
     const monitor = await Monitor.create({
       name,
       url,
       method,
-      interval,
-      timeout,
+      intervalSeconds,
+      timeoutSeconds,
       expectedStatusCode,
       userId,
     });

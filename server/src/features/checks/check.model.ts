@@ -5,7 +5,7 @@ export interface ICheckResult extends Document {
   userId: mongoose.Types.ObjectId;
   status: "UP" | "DOWN" | "RATE_LIMITED";
   statusCode: number | null;
-  responseTime: number;
+  responseTimeMs: number;
   error: string | null;
   checkedAt: Date;
 }
@@ -30,7 +30,7 @@ const checkSchema = new Schema<ICheckResult>({
     type: Number,
     default: null,
   },
-  responseTime: {
+  responseTimeMs: {
     type: Number,
     required: true,
     min: 0,
@@ -48,7 +48,6 @@ const checkSchema = new Schema<ICheckResult>({
 // Efficiently retrieve a monitor's history in time order.
 checkSchema.index({ monitorId: 1, checkedAt: -1 });
 
-export const CheckResult = mongoose.model<ICheckResult>(
-  "CheckResult",
-  checkSchema,
-);
+const Check = mongoose.model<ICheckResult>("CheckResult", checkSchema);
+
+export default Check;

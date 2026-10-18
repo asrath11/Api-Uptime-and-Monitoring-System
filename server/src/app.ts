@@ -4,6 +4,7 @@ import cookieParser from "cookie-parser";
 
 import authRouter from "@/features/auth/auth.route.js";
 import monitorRouter from "@/features/monitors/monitor.route.js";
+import checkRouter from "@/features/checks/check.route.js";
 import { errorHandler } from "@/middleware/error.middleware.js";
 
 export const app = express();
@@ -23,6 +24,7 @@ app.get("/api/health", (req, res) => {
 
 app.use("/api/auth", authRouter);
 app.use("/api/monitors", monitorRouter);
+app.use("/api", checkRouter);
 
 // 404 handler
 app.use((req, res) => {
