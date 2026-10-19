@@ -5,6 +5,8 @@ import {
 } from "./monitor.schema.js";
 import Monitor from "./monitor.model.js";
 import { asyncWrapper } from "@/utils/asyncWrapper.js";
+import mongoose from "mongoose";
+import Check from "../checks/check.model.js";
 
 export const createMonitor = asyncWrapper(
   async (req: Request, res: Response) => {
@@ -104,6 +106,75 @@ export const deleteMonitor = asyncWrapper(
     res.status(200).json({
       success: true,
       message: "Monitor deleted successfully",
+    });
+  },
+);
+
+export const analyticsMonitor = asyncWrapper(
+  async (req: Request, res: Response) => {
+    const { id } = req.params;
+    const monitor = await Check.aggregate([
+      {
+        $match: {
+          userId: new mongoose.Types.ObjectId(req.user?._id as string),
+          monitorId: new mongoose.Types.ObjectId(id as string),
+        },
+      },
+      {
+        $group: {
+          _id: null,
+          count: { $sum: 1 },
+          avgResponseTime: { $avg: "$responseTimeMs" },
+          success: {
+            $sum: {
+              $cond: [{ $eq: ["$status", "UP"] }, 1, 0],
+            },
+          },
+          failure: {
+            $sum: {
+              $cond: [{ $eq: ["$status", "DOWN"] }, 1, 0],
+            },
+          },
+          rateLimited: {
+            $sum: {
+              $cond: [{ $eq: ["$status", "RATE_LIMITED"] }, 1, 0],
+            },
+          },
+        },
+      },
+      {
+        $project: {
+          _id: 0,
+          status: 1,
+          avgResponseTime: { $floor: "$avgResponseTime" },
+          success: 1,
+          count: 1,
+          failure: 1,
+          rateLimitedCount: 1,
+          upTimePercentage: {
+            $multiply: [
+              {
+                $divide: ["$success", { $add: ["$success", "$failure"] }],
+              },
+              100,
+            ],
+          },
+        },
+      },
+    ]);
+    res.status(200).json({
+      success: true,
+      data: {
+        monitorId: id,
+        analytics: monitor[0] || {
+          count: 0,
+          avgResponseTime: 0,
+          success: 0,
+          failure: 0,
+          rateLimited: 0,
+          upTimePercentage: 0,
+        },
+      },
     });
   },
 );

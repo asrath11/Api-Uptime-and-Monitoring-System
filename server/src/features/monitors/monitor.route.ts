@@ -14,6 +14,7 @@ import {
   getMonitorById,
   partialUpdateMonitor,
   deleteMonitor,
+  analyticsMonitor,
 } from "@/features/monitors/monitor.controller.js";
 
 const router = Router();
@@ -28,5 +29,7 @@ router
   .get(getMonitorById)
   .patch(validate(partialUpdateMonitorSchema), partialUpdateMonitor)
   .delete(deleteMonitor);
+
+router.get("/:id/analytics", analyticsMonitor);
 
 export default router;
