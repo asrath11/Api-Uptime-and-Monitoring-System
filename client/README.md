@@ -11,6 +11,17 @@ Currently, two official plugins are available:
 
 The React Compiler is not enabled on this template because of its impact on dev & build performances. To add it, see [this documentation](https://react.dev/learn/react-compiler/installation).
 
+## Authentication API
+
+The client uses the backend routes `POST /api/auth/register`, `POST /api/auth/login`,
+`GET /api/auth/me`, and `POST /api/auth/logout`. Requests include browser credentials;
+the JWT is kept in the backend's `httpOnly` cookie and is never stored by the client.
+
+During development, Vite proxies `/api` to `http://localhost:3000`. For a separately
+hosted API, set `VITE_API_BASE_URL` to its `/api` URL and set the backend's
+`CLIENT_ORIGIN` to the frontend origin. Because the cookie is `SameSite=Strict`,
+the frontend and API should be deployed on the same site.
+
 ## Expanding the ESLint configuration
 
 If you are developing a production application, we recommend updating the configuration to enable type-aware lint rules:

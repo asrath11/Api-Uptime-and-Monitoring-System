@@ -1,12 +1,16 @@
 import { useState } from 'react'
 import { useForm } from 'react-hook-form'
 import { zodResolver } from '@hookform/resolvers/zod'
-import { Link } from 'react-router-dom'
+import { Link, useNavigate } from 'react-router-dom'
+import { AuthApiError } from '../api/authApi'
 import { AuthField, PasswordField } from '../components/AuthField'
 import AuthShell from '../components/AuthShell'
+import { useAuth } from '../context/useAuth'
 import { loginSchema, type LoginValues } from '../schemas/authSchemas'
 
 export default function LoginPage() {
+  const { login, sessionError } = useAuth()
+  const navigate = useNavigate()
   const [notice, setNotice] = useState('')
   const {
     register,
@@ -17,8 +21,18 @@ export default function LoginPage() {
     defaultValues: { remember: true },
   })
 
-  const onSubmit = handleSubmit(() => {
-    setNotice('Your details are valid. Connect your authentication API to sign in.')
+  const onSubmit = handleSubmit(async (values) => {
+    setNotice('')
+    try {
+      await login(values)
+      navigate('/dashboard', { replace: true })
+    } catch (error) {
+      setNotice(
+        error instanceof AuthApiError
+          ? error.message
+          : 'Unable to sign in. Please try again.',
+      )
+    }
   })
 
   return (
@@ -60,7 +74,9 @@ export default function LoginPage() {
           {isSubmitting ? 'Signing in…' : 'Sign in'}
           <span aria-hidden="true">→</span>
         </button>
-        {notice && <p className="form-notice" role="status">{notice}</p>}
+        {(notice || sessionError) && (
+          <p className="form-notice form-error-notice" role="alert">{notice || sessionError}</p>
+        )}
       </form>
       <p className="switch-prompt">
         New to Pulsewatch? <Link to="/signup">Create an account <span aria-hidden="true">↗</span></Link>

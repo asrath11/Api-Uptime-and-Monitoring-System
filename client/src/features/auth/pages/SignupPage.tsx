@@ -1,12 +1,16 @@
 import { useState } from 'react'
 import { useForm } from 'react-hook-form'
 import { zodResolver } from '@hookform/resolvers/zod'
-import { Link } from 'react-router-dom'
+import { Link, useNavigate } from 'react-router-dom'
+import { AuthApiError } from '../api/authApi'
 import { AuthField, PasswordField } from '../components/AuthField'
 import AuthShell from '../components/AuthShell'
+import { useAuth } from '../context/useAuth'
 import { signupSchema, type SignupValues } from '../schemas/authSchemas'
 
 export default function SignupPage() {
+  const { register: createAccount, sessionError } = useAuth()
+  const navigate = useNavigate()
   const [notice, setNotice] = useState('')
   const {
     register,
@@ -16,8 +20,18 @@ export default function SignupPage() {
     resolver: zodResolver(signupSchema),
   })
 
-  const onSubmit = handleSubmit(() => {
-    setNotice('Your details are valid. Connect your authentication API to create your account.')
+  const onSubmit = handleSubmit(async (values) => {
+    setNotice('')
+    try {
+      await createAccount(values)
+      navigate('/dashboard', { replace: true })
+    } catch (error) {
+      setNotice(
+        error instanceof AuthApiError
+          ? error.message
+          : 'Unable to create your account. Please try again.',
+      )
+    }
   })
 
   return (
@@ -74,7 +88,9 @@ export default function SignupPage() {
           {isSubmitting ? 'Creating account…' : 'Create account'}
           <span aria-hidden="true">→</span>
         </button>
-        {notice && <p className="form-notice" role="status">{notice}</p>}
+        {(notice || sessionError) && (
+          <p className="form-notice form-error-notice" role="alert">{notice || sessionError}</p>
+        )}
       </form>
       <p className="switch-prompt">
         Already have an account? <Link to="/login">Sign in <span aria-hidden="true">↗</span></Link>
