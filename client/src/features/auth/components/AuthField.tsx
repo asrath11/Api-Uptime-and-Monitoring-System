@@ -1,6 +1,8 @@
 import { useState, type InputHTMLAttributes, type ReactNode } from 'react'
 import { Eye, EyeOff } from 'lucide-react'
 import type { UseFormRegisterReturn } from 'react-hook-form'
+import { Button } from '../../../components/ui/button'
+import { Input } from '../../../components/ui/input'
 
 type AuthFieldProps = {
   id: string
@@ -20,23 +22,23 @@ export function AuthField({
   trailing,
 }: AuthFieldProps) {
   return (
-    <div className="field">
-      <label className="field-label" htmlFor={id}>
+    <div className="grid gap-1.5">
+      <label className="text-xs font-medium text-foreground" htmlFor={id}>
         {label}
       </label>
-      <div className={`input-wrap${error ? ' has-error' : ''}`}>
-        <input
+      <div className="relative">
+        <Input
           id={id}
-          className="text-input"
+          className={trailing ? 'pr-11' : ''}
           aria-invalid={Boolean(error)}
           aria-describedby={error ? `${id}-error` : undefined}
           {...inputProps}
           {...registration}
         />
-        {trailing}
+        {trailing && <span className="absolute inset-y-0 right-1 flex items-center">{trailing}</span>}
       </div>
       {error && (
-        <p className="field-error" id={`${id}-error`} role="alert">
+        <p className="text-xs text-destructive" id={`${id}-error`} role="alert">
           {error}
         </p>
       )}
@@ -60,14 +62,16 @@ export function PasswordField({ autoComplete, ...fieldProps }: PasswordFieldProp
         placeholder: 'At least 8 characters',
       }}
       trailing={
-        <button
-          className="password-toggle"
+        <Button
+          className="text-muted-foreground hover:text-foreground"
+          size="icon"
+          variant="ghost"
           type="button"
           aria-label={visible ? 'Hide password' : 'Show password'}
           onClick={() => setVisible((current) => !current)}
         >
           {visible ? <EyeOff size={18} /> : <Eye size={18} />}
-        </button>
+        </Button>
       }
     />
   )
