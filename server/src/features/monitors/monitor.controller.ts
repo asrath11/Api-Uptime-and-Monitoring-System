@@ -128,11 +128,13 @@ export const analyticsMonitor = asyncWrapper(
     const now = Date.now();
     const bucketUnit = range === "24h" ? "hour" : "day";
     const bucketCount = range === "24h" ? 24 : range === "7d" ? 7 : 30;
-    const bucketMilliseconds = bucketUnit === "hour"
-      ? 60 * 60 * 1000
-      : 24 * 60 * 60 * 1000;
-    const currentBucket = Math.floor(now / bucketMilliseconds) * bucketMilliseconds;
-    const since = new Date(currentBucket - (bucketCount - 1) * bucketMilliseconds);
+    const bucketMilliseconds =
+      bucketUnit === "hour" ? 60 * 60 * 1000 : 24 * 60 * 60 * 1000;
+    const currentBucket =
+      Math.floor(now / bucketMilliseconds) * bucketMilliseconds;
+    const since = new Date(
+      currentBucket - (bucketCount - 1) * bucketMilliseconds,
+    );
     const rangeMatch = {
       ...match,
       checkedAt: { $gte: since, $lte: new Date(now) },
@@ -178,10 +180,7 @@ export const analyticsMonitor = asyncWrapper(
                 {
                   $multiply: [
                     {
-                      $divide: [
-                        "$success",
-                        { $add: ["$success", "$failure"] },
-                      ],
+                      $divide: ["$success", { $add: ["$success", "$failure"] }],
                     },
                     100,
                   ],
