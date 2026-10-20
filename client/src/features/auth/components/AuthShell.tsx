@@ -1,7 +1,8 @@
 import type { ReactNode } from 'react'
 import { Activity, Check, ShieldCheck, Zap } from 'lucide-react'
 import { Link } from 'react-router-dom'
-import { Card, CardContent } from '../../../components/ui/card'
+import { Card, CardContent } from '@/components/ui/card'
+import { ThemeToggle } from '@/components/theme-toggle'
 
 type AuthShellProps = {
   children: ReactNode
@@ -96,9 +97,12 @@ export default function AuthShell({ children, mode }: AuthShellProps) {
             </span>
             pulsewatch
           </Link>
-          <span className="ml-auto inline-flex items-center gap-1.5 text-[11px] text-muted-foreground">
-            <ShieldCheck size={15} className="text-emerald-700" /> Secure workspace access
-          </span>
+          <div className="ml-auto flex items-center gap-2">
+            <span className="inline-flex items-center gap-1.5 text-[11px] text-muted-foreground">
+              <ShieldCheck size={15} className="text-emerald-700" /> Secure workspace access
+            </span>
+            <ThemeToggle />
+          </div>
         </div>
         <div className="mx-auto flex w-full max-w-md flex-1 flex-col justify-center py-10">
           <div className="mb-7">

@@ -1,34 +1,37 @@
 import { useCallback, useEffect, useState, type FormEvent, type ReactNode } from 'react'
-import { useLocation, useNavigate } from 'react-router-dom'
+import { Link, useLocation, useNavigate } from 'react-router-dom'
 import {
-  AlertTriangle,
-  Check,
-  CheckCircle2,
   Clock3,
   ExternalLink,
   Globe2,
   LoaderCircle,
+  Pause,
+  Pencil,
   Plus,
+  Play,
   RefreshCw,
-  Server,
   ShieldCheck,
+  Trash2,
   X,
 } from 'lucide-react'
 import { z } from 'zod'
-import { Badge } from '../../../components/ui/badge'
-import { Button } from '../../../components/ui/button'
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '../../../components/ui/card'
-import { Input } from '../../../components/ui/input'
-import { WorkspaceSidebar } from '../../monitors/components/WorkspaceSidebar'
-import { AuthApiError } from '../api/authApi'
-import { useAuth } from '../context/useAuth'
+import { Badge } from '@/components/ui/badge'
+import { Button } from '@/components/ui/button'
+import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card'
+import { Input } from '@/components/ui/input'
+import { SummaryCard } from '@/components/ui/summary-card'
+import { toast } from 'sonner'
+import { WorkspaceSidebar } from '@/features/monitors/components/WorkspaceSidebar'
+import { AuthApiError } from '@/features/auth/api/authApi'
+import { useAuth } from '@/features/auth/context/useAuth'
 import {
   createMonitor,
+  deleteMonitor,
   getMonitors,
   MonitorApiError,
-  runMonitorCheck,
+  updateMonitor,
   type Monitor,
-} from '../../monitors/api/monitorApi'
+} from '@/features/monitors/api/monitorApi'
 
 const monitorFormSchema = z.object({
   name: z.string().trim().min(1, 'Give this monitor a name.').max(100),
@@ -76,12 +79,17 @@ export default function DashboardPage() {
   const [isLoading, setIsLoading] = useState(true)
   const [isRefreshing, setIsRefreshing] = useState(false)
   const [isSubmitting, setIsSubmitting] = useState(false)
-  const [checkingMonitorId, setCheckingMonitorId] = useState<string | null>(null)
+  const [isSaving, setIsSaving] = useState(false)
+  const [updatingMonitorId, setUpdatingMonitorId] = useState<string | null>(null)
+  const [deletingMonitorId, setDeletingMonitorId] = useState<string | null>(null)
+  const [pendingDeleteId, setPendingDeleteId] = useState<string | null>(null)
+  const [editingMonitor, setEditingMonitor] = useState<Monitor | null>(null)
   const [showCreateForm, setShowCreateForm] = useState(
     () => new URLSearchParams(location.search).get('addMonitor') === 'true',
   )
   const [error, setError] = useState('')
   const [feedback, setFeedback] = useState('')
+  const [feedbackType, setFeedbackType] = useState<'success' | 'info' | 'warning'>('success')
   const [isSigningOut, setIsSigningOut] = useState(false)
 
   const refreshMonitors = useCallback(async () => {
@@ -100,11 +108,11 @@ export default function DashboardPage() {
     }
   }, [])
 
-  const handleRefresh = () => {
+  const handleRefresh = useCallback(() => {
     setError('')
     setIsRefreshing(true)
     void refreshMonitors()
-  }
+  }, [refreshMonitors])
 
   useEffect(() => {
     const initialFetchId = window.setTimeout(() => void refreshMonitors(), 0)
@@ -115,9 +123,23 @@ export default function DashboardPage() {
     }
   }, [refreshMonitors])
 
-  const upCount = monitors.filter((monitor) => monitor.currentStatus === 'UP').length
-  const downCount = monitors.filter((monitor) => monitor.currentStatus === 'DOWN').length
-  const unknownCount = monitors.filter((monitor) => monitor.currentStatus === 'UNKNOWN').length
+  useEffect(() => {
+    if (!error) return
+    toast.error(error, {
+      action: monitors.length === 0
+        ? { label: 'Try again', onClick: handleRefresh }
+        : undefined,
+    })
+  }, [error, handleRefresh, monitors.length])
+
+  useEffect(() => {
+    if (feedback) toast[feedbackType](feedback)
+  }, [feedback, feedbackType])
+
+  const upCount = monitors.filter((monitor) => !monitor.isPaused && monitor.currentStatus === 'UP').length
+  const downCount = monitors.filter((monitor) => !monitor.isPaused && monitor.currentStatus === 'DOWN').length
+  const unknownCount = monitors.filter((monitor) => !monitor.isPaused && monitor.currentStatus === 'UNKNOWN').length
+  const pausedCount = monitors.filter((monitor) => monitor.isPaused).length
   const firstName = user?.name.trim().split(/\s+/)[0] || 'there'
   const handleCreateMonitor = async (event: FormEvent<HTMLFormElement>) => {
     event.preventDefault()
@@ -142,6 +164,7 @@ export default function DashboardPage() {
       const monitor = await createMonitor(parsed.data)
       setMonitors((current) => [monitor, ...current.filter((item) => item._id !== monitor._id)])
       setShowCreateForm(false)
+      setFeedbackType('success')
       setFeedback(`${monitor.name} is now being monitored.`)
     } catch (createError) {
       setError(
@@ -154,27 +177,82 @@ export default function DashboardPage() {
     }
   }
 
-  const handleCheck = async (monitor: Monitor) => {
-    setCheckingMonitorId(monitor._id)
+  const handleToggleMonitoring = async (monitor: Monitor) => {
+    setUpdatingMonitorId(monitor._id)
     setError('')
     setFeedback('')
     try {
-      const result = await runMonitorCheck(monitor._id)
-      const status = result.status === 'RATE_LIMITED'
-        ? 'rate limited'
-        : result.status === 'UP'
-          ? 'operational'
-          : 'down'
-      setFeedback(`${monitor.name}: ${status} · ${result.responseTimeMs} ms`)
-      await refreshMonitors()
-    } catch (checkError) {
+      const updated = await updateMonitor(monitor._id, { isPaused: !monitor.isPaused })
+      setMonitors((current) => current.map((item) => item._id === updated._id ? updated : item))
+      setFeedbackType(updated.isPaused ? 'warning' : 'success')
+      setFeedback(`${updated.name} monitoring ${updated.isPaused ? 'paused' : 'resumed'}.`)
+    } catch (toggleError) {
       setError(
-        checkError instanceof MonitorApiError
-          ? checkError.message
-          : `Unable to check ${monitor.name}. Please try again.`,
+        toggleError instanceof MonitorApiError
+          ? toggleError.message
+          : `Unable to ${monitor.isPaused ? 'resume' : 'pause'} ${monitor.name}.`,
       )
     } finally {
-      setCheckingMonitorId(null)
+      setUpdatingMonitorId(null)
+    }
+  }
+
+  const handleSaveMonitor = async (event: FormEvent<HTMLFormElement>) => {
+    event.preventDefault()
+    if (!editingMonitor) return
+
+    const formData = new FormData(event.currentTarget)
+    const parsed = monitorFormSchema.safeParse({
+      name: formData.get('name'),
+      url: formData.get('url'),
+      method: formData.get('method'),
+      intervalSeconds: formData.get('intervalSeconds'),
+      timeoutSeconds: formData.get('timeoutSeconds'),
+    })
+    if (!parsed.success) {
+      setError(parsed.error.issues[0]?.message ?? 'Check the monitor settings.')
+      return
+    }
+
+    setIsSaving(true)
+    setError('')
+    setFeedback('')
+    try {
+      const updated = await updateMonitor(editingMonitor._id, parsed.data)
+      setMonitors((current) => current.map((monitor) => monitor._id === updated._id ? updated : monitor))
+      setEditingMonitor(null)
+      setFeedbackType('success')
+      setFeedback(`${updated.name} settings saved.`)
+    } catch (saveError) {
+      setError(
+        saveError instanceof MonitorApiError
+          ? saveError.message
+          : 'Unable to save monitor settings.',
+      )
+    } finally {
+      setIsSaving(false)
+    }
+  }
+
+  const handleDeleteMonitor = async (monitor: Monitor) => {
+    setDeletingMonitorId(monitor._id)
+    setError('')
+    setFeedback('')
+    try {
+      await deleteMonitor(monitor._id)
+      setMonitors((current) => current.filter((item) => item._id !== monitor._id))
+      setPendingDeleteId(null)
+      if (editingMonitor?._id === monitor._id) setEditingMonitor(null)
+      setFeedbackType('success')
+      setFeedback(`${monitor.name} was deleted.`)
+    } catch (deleteError) {
+      setError(
+        deleteError instanceof MonitorApiError
+          ? deleteError.message
+          : `Unable to delete ${monitor.name}.`,
+      )
+    } finally {
+      setDeletingMonitorId(null)
     }
   }
 
@@ -199,8 +277,6 @@ export default function DashboardPage() {
     <main className="min-h-screen bg-muted/30 text-foreground md:flex">
       <WorkspaceSidebar
         user={user}
-        activePage="overview"
-        monitorCount={monitors.length}
         onSignOut={() => void handleLogout()}
         isSigningOut={isSigningOut}
       />
@@ -242,23 +318,26 @@ export default function DashboardPage() {
             </p>
           </section>
 
-          {error && (
-            <div className="flex items-center gap-2 rounded-lg border border-destructive/30 bg-destructive/5 px-4 py-3 text-sm text-destructive" role="alert">
-              <AlertTriangle size={16} />
-              <span>{error}</span>
-              {monitors.length === 0 && <Button className="ml-auto" variant="link" onClick={handleRefresh}>Try again</Button>}
-            </div>
-          )}
-          {feedback && (
-            <div className="flex items-center gap-2 rounded-lg border border-emerald-200 bg-emerald-50 px-4 py-3 text-sm text-emerald-800" role="status">
-              <CheckCircle2 size={16} /> {feedback}
-            </div>
-          )}
-
-          <section className="grid gap-3 sm:grid-cols-3" aria-label="Monitor summary">
-            <StatCard icon={<Server />} label="Total endpoints" value={isLoading ? '—' : monitors.length} detail="Configured monitors" />
-            <StatCard icon={<Check />} label="Operational" value={isLoading ? '—' : upCount} detail="Responding as expected" tone="green" />
-            <StatCard icon={<AlertTriangle />} label="Needs attention" value={isLoading ? '—' : downCount} detail={`${unknownCount} awaiting first check`} tone="red" />
+          <section className="grid gap-3 sm:grid-cols-2 xl:grid-cols-4" aria-label="Monitor summary">
+            <SummaryCard
+              label="Operational"
+              value={isLoading ? '—' : upCount}
+              tone="text-emerald-700"
+            />
+            <SummaryCard
+              label="Down"
+              value={isLoading ? '—' : downCount}
+              tone="text-destructive"
+            />
+            <SummaryCard
+              label="Awaiting first check"
+              value={isLoading ? '—' : unknownCount}
+            />
+            <SummaryCard
+              label="Paused"
+              value={isLoading ? '—' : pausedCount}
+              tone="text-amber-700"
+            />
           </section>
 
           {showCreateForm && (
@@ -306,6 +385,52 @@ export default function DashboardPage() {
             </Card>
           )}
 
+          {editingMonitor && (
+            <Card>
+              <CardHeader>
+                <CardTitle className="text-base">Edit {editingMonitor.name}</CardTitle>
+                <CardDescription>Changes apply to future automated checks.</CardDescription>
+              </CardHeader>
+              <CardContent>
+                <form className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3" onSubmit={handleSaveMonitor}>
+                  <FormField label="Monitor name">
+                    <Input name="name" defaultValue={editingMonitor.name} maxLength={100} required />
+                  </FormField>
+                  <FormField label="Endpoint URL">
+                    <Input name="url" type="url" defaultValue={editingMonitor.url} required />
+                  </FormField>
+                  <FormField label="Method">
+                    <select
+                      className="h-9 w-full rounded-md border border-input bg-background px-3 text-sm outline-none focus-visible:ring-3 focus-visible:ring-ring/50"
+                      name="method"
+                      defaultValue={editingMonitor.method}
+                    >
+                      <option value="GET">GET</option>
+                      <option value="POST">POST</option>
+                      <option value="PUT">PUT</option>
+                      <option value="DELETE">DELETE</option>
+                    </select>
+                  </FormField>
+                  <FormField label="Check interval (seconds)">
+                    <Input name="intervalSeconds" type="number" min="1" defaultValue={editingMonitor.intervalSeconds} required />
+                  </FormField>
+                  <FormField label="Timeout (seconds)">
+                    <Input name="timeoutSeconds" type="number" min="1" defaultValue={editingMonitor.timeoutSeconds} required />
+                  </FormField>
+                  <div className="flex justify-end gap-2 sm:col-span-2 lg:col-span-3">
+                    <Button variant="outline" type="button" disabled={isSaving} onClick={() => setEditingMonitor(null)}>
+                      Cancel
+                    </Button>
+                    <Button type="submit" disabled={isSaving}>
+                      {isSaving && <LoaderCircle className="animate-spin" />}
+                      {isSaving ? 'Saving…' : 'Save changes'}
+                    </Button>
+                  </div>
+                </form>
+              </CardContent>
+            </Card>
+          )}
+
           <section className="scroll-mt-20 space-y-3" id="endpoints">
             <div className="flex items-end justify-between gap-3">
               <div>
@@ -337,9 +462,10 @@ export default function DashboardPage() {
                 </div>
                 <div className="divide-y">
                   {monitors.map((monitor) => {
-                    const checking = checkingMonitorId === monitor._id
                     const status = monitor.currentStatus.toLowerCase()
-                    const statusClass = status === 'up'
+                    const statusClass = monitor.isPaused
+                      ? 'border-amber-200 bg-amber-50 text-amber-800'
+                      : status === 'up'
                       ? 'border-emerald-200 bg-emerald-50 text-emerald-800'
                       : status === 'down'
                         ? 'border-red-200 bg-red-50 text-red-800'
@@ -350,7 +476,12 @@ export default function DashboardPage() {
                         <div className="flex min-w-0 items-center gap-3">
                           <span className="grid size-9 shrink-0 place-items-center rounded-lg bg-muted text-muted-foreground"><Globe2 size={17} /></span>
                           <div className="min-w-0">
-                            <p className="truncate text-sm font-medium">{monitor.name}</p>
+                            <Link
+                              className="block truncate text-sm font-medium hover:text-primary"
+                              to={`/analytics/${monitor._id}`}
+                            >
+                              {monitor.name}
+                            </Link>
                             <div className="mt-1 flex min-w-0 items-center gap-1.5 text-xs text-muted-foreground">
                               <span className="font-semibold">{monitor.method}</span>
                               <span className="truncate">{getHostname(monitor.url)}</span>
@@ -360,13 +491,66 @@ export default function DashboardPage() {
                             </div>
                           </div>
                         </div>
-                        <div><span className="mr-2 text-[10px] text-muted-foreground md:hidden">Status</span><Badge className={statusClass}><span className={`size-1.5 rounded-full ${status === 'up' ? 'bg-emerald-600' : status === 'down' ? 'bg-red-600' : 'bg-muted-foreground'}`} />{statusLabels[monitor.currentStatus]}</Badge></div>
+                        <div><span className="mr-2 text-[10px] text-muted-foreground md:hidden">Status</span><Badge className={statusClass}><span className={`size-1.5 rounded-full ${monitor.isPaused ? 'bg-amber-600' : status === 'up' ? 'bg-emerald-600' : status === 'down' ? 'bg-red-600' : 'bg-muted-foreground'}`} />{monitor.isPaused ? 'Paused' : statusLabels[monitor.currentStatus]}</Badge></div>
                         <div className="text-xs text-muted-foreground"><span className="mr-2 text-[10px] md:hidden">Last checked</span>{formatLastChecked(monitor.lastCheckedAt)}</div>
                         <div className="flex items-center gap-1.5 text-xs text-muted-foreground"><Clock3 size={13} /><span className="md:hidden">Interval · </span>{formatInterval(monitor.intervalSeconds)}</div>
-                        <Button className="w-fit" size="sm" variant="outline" onClick={() => void handleCheck(monitor)} disabled={checkingMonitorId !== null}>
-                          {checking ? <LoaderCircle className="animate-spin" /> : <RefreshCw />}
-                          {checking ? 'Checking…' : 'Check now'}
-                        </Button>
+                        <div className="flex flex-wrap items-center gap-2">
+                          <Button
+                            className="w-fit"
+                            size="sm"
+                            variant="outline"
+                            onClick={() => void handleToggleMonitoring(monitor)}
+                            disabled={updatingMonitorId !== null}
+                          >
+                            {updatingMonitorId === monitor._id
+                              ? <LoaderCircle className="animate-spin" />
+                              : monitor.isPaused ? <Play /> : <Pause />}
+                            {updatingMonitorId === monitor._id
+                              ? (monitor.isPaused ? 'Resuming…' : 'Pausing…')
+                              : monitor.isPaused ? 'Resume' : 'Pause'}
+                          </Button>
+                          <Button
+                            variant="outline"
+                            size="icon-sm"
+                            aria-label={`Edit ${monitor.name}`}
+                            onClick={() => setEditingMonitor(monitor)}
+                          >
+                            <Pencil />
+                          </Button>
+                          {pendingDeleteId === monitor._id ? (
+                            <div className="flex items-center gap-1">
+                              <span className="mr-1 text-[10px] text-destructive">Delete?</span>
+                              <Button
+                                variant="destructive"
+                                size="sm"
+                                disabled={deletingMonitorId === monitor._id}
+                                onClick={() => void handleDeleteMonitor(monitor)}
+                              >
+                                {deletingMonitorId === monitor._id
+                                  ? <LoaderCircle className="animate-spin" />
+                                  : <Trash2 />}
+                                Confirm
+                              </Button>
+                              <Button
+                                variant="ghost"
+                                size="sm"
+                                disabled={deletingMonitorId === monitor._id}
+                                onClick={() => setPendingDeleteId(null)}
+                              >
+                                Cancel
+                              </Button>
+                            </div>
+                          ) : (
+                            <Button
+                              variant="outline"
+                              size="icon-sm"
+                              aria-label={`Delete ${monitor.name}`}
+                              onClick={() => setPendingDeleteId(monitor._id)}
+                            >
+                              <Trash2 />
+                            </Button>
+                          )}
+                        </div>
                       </article>
                     )
                   })}
@@ -382,39 +566,6 @@ export default function DashboardPage() {
         </div>
       </div>
     </main>
-  )
-}
-
-function StatCard({
-  icon,
-  label,
-  value,
-  detail,
-  tone = 'blue',
-}: {
-  icon: ReactNode
-  label: string
-  value: string | number
-  detail: string
-  tone?: 'blue' | 'green' | 'red'
-}) {
-  const iconTone = {
-    blue: 'bg-blue-50 text-blue-700',
-    green: 'bg-emerald-50 text-emerald-700',
-    red: 'bg-red-50 text-red-700',
-  }[tone]
-
-  return (
-    <Card>
-      <CardContent className="flex items-start gap-3 p-4 sm:p-5">
-        <span className={`grid size-9 shrink-0 place-items-center rounded-lg ${iconTone}`}>{icon}</span>
-        <div>
-          <p className="text-xs text-muted-foreground">{label}</p>
-          <p className="mt-1 text-2xl font-semibold tracking-tight">{value}</p>
-          <p className="mt-0.5 text-[11px] text-muted-foreground">{detail}</p>
-        </div>
-      </CardContent>
-    </Card>
   )
 }
 

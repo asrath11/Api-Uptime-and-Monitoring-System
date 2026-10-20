@@ -6,7 +6,7 @@ import {
   type SignupCredentials,
   errorResponseSchema,
   authResponseSchema,
-} from "./authApiSchema";
+} from "@/features/auth/api/authApiSchema";
 
 const API_BASE_URL = (import.meta.env.VITE_API_BASE_URL || "/api").replace(
   /\/+$/,

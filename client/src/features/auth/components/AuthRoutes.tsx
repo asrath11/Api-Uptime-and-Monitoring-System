@@ -1,6 +1,6 @@
 import { Navigate, Outlet } from 'react-router-dom'
 import { LoaderCircle } from 'lucide-react'
-import { useAuth } from '../context/useAuth'
+import { useAuth } from '@/features/auth/context/useAuth'
 
 function AuthLoading() {
   return (

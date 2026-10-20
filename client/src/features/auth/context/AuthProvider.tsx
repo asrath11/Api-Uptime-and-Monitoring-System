@@ -5,15 +5,15 @@ import {
   useState,
   type ReactNode,
 } from 'react'
-import { AuthContext } from './useAuth'
+import { AuthContext } from '@/features/auth/context/useAuth'
 import {
   AuthApiError,
   getCurrentUser,
   login as loginRequest,
   logout as logoutRequest,
   register as registerRequest,
-} from '../api/authApi'
-import type { AuthUser, LoginCredentials, SignupCredentials } from '../api/authApiSchema'
+} from '@/features/auth/api/authApi'
+import type { AuthUser, LoginCredentials, SignupCredentials } from '@/features/auth/api/authApiSchema'
 
 export function AuthProvider({ children }: { children: ReactNode }) {
   const [user, setUser] = useState<AuthUser | null>(null)

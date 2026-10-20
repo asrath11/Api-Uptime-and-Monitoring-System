@@ -1,8 +1,8 @@
 import { useState, type InputHTMLAttributes, type ReactNode } from 'react'
 import { Eye, EyeOff } from 'lucide-react'
 import type { UseFormRegisterReturn } from 'react-hook-form'
-import { Button } from '../../../components/ui/button'
-import { Input } from '../../../components/ui/input'
+import { Button } from '@/components/ui/button'
+import { Input } from '@/components/ui/input'
 
 type AuthFieldProps = {
   id: string

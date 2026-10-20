@@ -5,29 +5,30 @@ import {
   AlertCircle,
   ArrowLeft,
   LoaderCircle,
+  Pause,
+  Play,
   RefreshCw,
   ShieldCheck,
-  Zap,
 } from 'lucide-react'
-import { Alert } from '../../../components/ui/alert'
-import { Badge } from '../../../components/ui/badge'
-import { Button } from '../../../components/ui/button'
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '../../../components/ui/card'
-import { AuthApiError } from '../../auth/api/authApi'
-import { useAuth } from '../../auth/context/useAuth'
+import { Alert } from '@/components/ui/alert'
+import { Badge } from '@/components/ui/badge'
+import { Button } from '@/components/ui/button'
+import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card'
+import { AuthApiError } from '@/features/auth/api/authApi'
+import { useAuth } from '@/features/auth/context/useAuth'
 import {
   getMonitor,
   getMonitorAnalytics,
   MonitorApiError,
-  runMonitorCheck,
+  updateMonitor,
   type AnalyticsRange,
   type Monitor,
   type MonitorAnalytics,
-} from '../api/monitorApi'
-import { WorkspaceSidebar } from '../components/WorkspaceSidebar'
-import { Card as AnalyticsCard, CardContent as AnalyticsCardContent } from '../../../components/ui/card'
+} from '@/features/monitors/api/monitorApi'
+import { WorkspaceSidebar } from '@/features/monitors/components/WorkspaceSidebar'
+import { Card as AnalyticsCard, CardContent as AnalyticsCardContent } from '@/components/ui/card'
 
-const MonitorAnalyticsCharts = lazy(() => import('../components/MonitorAnalyticsCharts'))
+const MonitorAnalyticsCharts = lazy(() => import('@/features/monitors/components/MonitorAnalyticsCharts'))
 
 export default function MonitorDetailsPage() {
   const { monitorId } = useParams<{ monitorId: string }>()
@@ -38,7 +39,7 @@ export default function MonitorDetailsPage() {
   const [analyticsRange, setAnalyticsRange] = useState<AnalyticsRange>('24h')
   const [isLoading, setIsLoading] = useState(true)
   const [isRefreshing, setIsRefreshing] = useState(false)
-  const [isChecking, setIsChecking] = useState(false)
+  const [isUpdatingMonitoring, setIsUpdatingMonitoring] = useState(false)
   const [isSigningOut, setIsSigningOut] = useState(false)
   const [error, setError] = useState('')
   const [feedback, setFeedback] = useState('')
@@ -74,23 +75,23 @@ export default function MonitorDetailsPage() {
     return () => window.clearTimeout(fetchId)
   }, [refreshDetails])
 
-  const handleCheck = async () => {
+  const handleToggleMonitoring = async () => {
     if (!monitorId || !monitor) return
-    setIsChecking(true)
+    setIsUpdatingMonitoring(true)
     setError('')
     setFeedback('')
     try {
-      const result = await runMonitorCheck(monitorId)
-      setFeedback(`Check completed: ${result.status.replace('_', ' ')} · ${result.responseTimeMs} ms`)
-      await refreshDetails()
-    } catch (checkError) {
+      const updated = await updateMonitor(monitorId, { isPaused: !monitor.isPaused })
+      setMonitor(updated)
+      setFeedback(`${updated.name} monitoring ${updated.isPaused ? 'paused' : 'resumed'}.`)
+    } catch (toggleError) {
       setError(
-        checkError instanceof MonitorApiError
-          ? checkError.message
-          : 'Unable to run a check. Please try again.',
+        toggleError instanceof MonitorApiError
+          ? toggleError.message
+          : `Unable to ${monitor.isPaused ? 'resume' : 'pause'} monitoring.`,
       )
     } finally {
-      setIsChecking(false)
+      setIsUpdatingMonitoring(false)
     }
   }
 
@@ -117,7 +118,6 @@ export default function MonitorDetailsPage() {
     <main className="min-h-screen bg-muted/30 text-foreground md:flex">
       <WorkspaceSidebar
         user={user}
-        activePage="endpoints"
         onSignOut={() => void handleSignOut()}
         isSigningOut={isSigningOut}
       />
@@ -126,10 +126,26 @@ export default function MonitorDetailsPage() {
           <div className="flex items-center gap-2 text-xs text-muted-foreground">
             <Link className="hover:text-foreground" to="/dashboard">Workspace</Link>
             <span>/</span>
-            <Link className="hover:text-foreground" to="/endpoints">Endpoints</Link>
+            <Link className="hover:text-foreground" to="/dashboard">Overview</Link>
             {monitor && <><span>/</span><strong className="max-w-40 truncate font-medium text-foreground">{monitor.name}</strong></>}
           </div>
           <div className="flex gap-2">
+            {monitor && (
+              <Button
+                variant="outline"
+                onClick={() => void handleToggleMonitoring()}
+                disabled={isUpdatingMonitoring}
+              >
+                {isUpdatingMonitoring
+                  ? <LoaderCircle className="animate-spin" />
+                  : monitor.isPaused ? <Play /> : <Pause />}
+                <span className="hidden sm:inline">
+                  {isUpdatingMonitoring
+                    ? (monitor.isPaused ? 'Resuming…' : 'Pausing…')
+                    : monitor.isPaused ? 'Resume' : 'Pause'}
+                </span>
+              </Button>
+            )}
             <Button
               variant="outline"
               size="icon"
@@ -142,16 +158,12 @@ export default function MonitorDetailsPage() {
             >
               <RefreshCw className={isRefreshing ? 'animate-spin' : ''} />
             </Button>
-            <Button onClick={() => void handleCheck()} disabled={isChecking || !monitor}>
-              {isChecking ? <LoaderCircle className="animate-spin" /> : <Zap />}
-              <span className="hidden sm:inline">{isChecking ? 'Checking…' : 'Check now'}</span>
-            </Button>
           </div>
         </header>
 
         <div className="mx-auto max-w-7xl space-y-6 px-4 py-8 sm:px-6 lg:px-10">
-          <Link className="inline-flex items-center gap-1.5 text-xs text-muted-foreground hover:text-foreground" to="/endpoints">
-            <ArrowLeft size={14} /> Back to endpoints
+          <Link className="inline-flex items-center gap-1.5 text-xs text-muted-foreground hover:text-foreground" to="/dashboard">
+            <ArrowLeft size={14} /> Back to overview
           </Link>
 
           {error && <Alert><AlertCircle className="mt-0.5 size-4 shrink-0" /><span>{error}</span></Alert>}
@@ -173,14 +185,16 @@ export default function MonitorDetailsPage() {
                   <h1 className="mt-2 break-words text-2xl font-semibold tracking-tight sm:text-3xl">{monitor.name}</h1>
                   <a className="mt-1 block break-all text-sm text-muted-foreground hover:text-primary" href={monitor.url} target="_blank" rel="noreferrer">{monitor.url}</a>
                 </div>
-                <Badge className={monitor.currentStatus === 'UP'
+                <Badge className={monitor.isPaused
+                  ? 'border-amber-200 bg-amber-50 text-amber-800'
+                  : monitor.currentStatus === 'UP'
                   ? 'border-emerald-200 bg-emerald-50 text-emerald-800'
                   : monitor.currentStatus === 'DOWN'
                     ? 'border-red-200 bg-red-50 text-red-800'
                     : 'border-border bg-background text-muted-foreground'
                 }>
-                  <span className={`size-1.5 rounded-full ${monitor.currentStatus === 'UP' ? 'bg-emerald-600' : monitor.currentStatus === 'DOWN' ? 'bg-red-600' : 'bg-muted-foreground'}`} />
-                  {monitor.currentStatus === 'UP' ? 'Operational' : monitor.currentStatus === 'DOWN' ? 'Down' : 'Awaiting check'}
+                  <span className={`size-1.5 rounded-full ${monitor.isPaused ? 'bg-amber-600' : monitor.currentStatus === 'UP' ? 'bg-emerald-600' : monitor.currentStatus === 'DOWN' ? 'bg-red-600' : 'bg-muted-foreground'}`} />
+                  {monitor.isPaused ? 'Paused' : monitor.currentStatus === 'UP' ? 'Operational' : monitor.currentStatus === 'DOWN' ? 'Down' : 'Awaiting check'}
                 </Badge>
               </section>
 
@@ -211,7 +225,11 @@ export default function MonitorDetailsPage() {
               <Card>
                 <CardHeader>
                   <CardTitle className="flex items-center gap-2 text-base"><Activity size={17} /> Monitor configuration</CardTitle>
-                  <CardDescription>Current settings used by scheduled health checks.</CardDescription>
+                  <CardDescription>
+                    {monitor.isPaused
+                      ? 'Automatic health checks are paused.'
+                      : 'Current settings used by scheduled health checks.'}
+                  </CardDescription>
                 </CardHeader>
                 <CardContent className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
                   <ConfigItem label="Request method" value={monitor.method} />
@@ -256,12 +274,10 @@ export default function MonitorDetailsPage() {
                       <Activity className="size-6 text-muted-foreground" />
                       <h3 className="mt-3 text-sm font-semibold">No analytics yet</h3>
                       <p className="mt-1 max-w-sm text-xs text-muted-foreground">
-                        Run a check or wait for the scheduler to record data. Charts will appear here as checks come in.
+                        {monitor.isPaused
+                          ? 'Resume monitoring to collect check history and populate analytics.'
+                          : 'Scheduled checks will populate analytics as monitoring data is collected.'}
                       </p>
-                      <Button className="mt-4" onClick={() => void handleCheck()} disabled={isChecking}>
-                        {isChecking ? <LoaderCircle className="animate-spin" /> : <Zap />}
-                        Run first check
-                      </Button>
                     </CardContent>
                   </Card>
                 ) : (
@@ -281,7 +297,7 @@ export default function MonitorDetailsPage() {
             <Card><CardContent className="flex min-h-44 flex-col items-center justify-center p-8 text-center">
               <h2 className="text-sm font-semibold">Monitor unavailable</h2>
               <p className="mt-1 text-xs text-muted-foreground">This monitor may have been deleted or is not accessible.</p>
-              <Button className="mt-4" variant="outline" onClick={() => navigate('/endpoints')}>Return to endpoints</Button>
+              <Button className="mt-4" variant="outline" onClick={() => navigate('/dashboard')}>Return to overview</Button>
             </CardContent></Card>
           )}
         </div>

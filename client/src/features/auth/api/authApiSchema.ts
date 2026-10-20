@@ -1,5 +1,5 @@
 import { z } from "zod";
-import type { loginSchema, signupSchema } from "../schemas/authSchemas";
+import type { loginSchema, signupSchema } from "@/features/auth/schemas/authSchemas";
 
 export const userSchema = z.object({
   id: z.string(),

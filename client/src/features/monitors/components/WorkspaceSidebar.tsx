@@ -1,62 +1,46 @@
-import { Activity, Globe2, LoaderCircle, LogOut } from 'lucide-react'
-import { Link, NavLink } from 'react-router-dom'
-import type { AuthUser } from '../../auth/api/authApiSchema'
-import { Button } from '../../../components/ui/button'
-import { Card, CardContent } from '../../../components/ui/card'
+import { Activity, LoaderCircle, LogOut } from 'lucide-react'
+import { Link, NavLink, useLocation } from 'react-router-dom'
+import type { AuthUser } from '@/features/auth/api/authApiSchema'
+import { Button } from '@/components/ui/button'
+import { Card, CardContent } from '@/components/ui/card'
+import { ThemeToggle } from '@/components/theme-toggle'
 
 export function WorkspaceSidebar({
   user,
-  activePage,
-  monitorCount,
   onSignOut,
   isSigningOut,
 }: {
   user: AuthUser | null
-  activePage: 'overview' | 'endpoints'
-  monitorCount?: number
   onSignOut: () => void
   isSigningOut: boolean
 }) {
+  const location = useLocation()
   const initials =
     user?.name.trim().split(/\s+/).map((part) => part[0]).slice(0, 2).join('').toUpperCase() || 'PW'
 
   return (
     <aside className="flex items-center justify-between gap-4 bg-slate-950 px-4 py-3 text-slate-100 md:sticky md:top-0 md:h-screen md:w-60 md:flex-col md:items-stretch md:justify-start md:px-4 md:py-6">
-      <Link className="flex items-center gap-2.5 text-lg font-semibold tracking-tight" to="/dashboard">
-        <span className="grid size-8 place-items-center rounded-lg border border-emerald-300/20 bg-emerald-300/10 text-emerald-300">
-          <Activity size={18} />
-        </span>
-        pulsewatch
-      </Link>
+      <div className="flex items-center justify-between gap-2">
+        <Link className="flex items-center gap-2.5 text-lg font-semibold tracking-tight" to="/dashboard">
+          <span className="grid size-8 place-items-center rounded-lg border border-emerald-300/20 bg-emerald-300/10 text-emerald-300">
+            <Activity size={18} />
+          </span>
+          pulsewatch
+        </Link>
+        <ThemeToggle />
+      </div>
 
       <nav className="flex items-center gap-1 md:mt-12 md:flex-col md:items-stretch" aria-label="Main navigation">
         <NavLink
           to="/dashboard"
-          className={({ isActive }) =>
-            `flex items-center gap-2.5 rounded-md px-3 py-2 text-sm font-medium ${
-              activePage === 'overview' && isActive
-                ? 'bg-emerald-400/10 text-emerald-200'
-                : 'text-slate-300 hover:bg-white/5 hover:text-white'
-            }`
-          }
+          className={({ isActive }) => `flex items-center gap-2.5 rounded-md px-3 py-2 text-sm font-medium ${
+            isActive || location.pathname.startsWith('/analytics/')
+              ? 'bg-emerald-400/10 text-emerald-200'
+              : 'text-slate-300 hover:bg-white/5 hover:text-white'
+          }`}
         >
           <Activity size={16} />
-          Overview
-        </NavLink>
-        <NavLink
-          to="/endpoints"
-          className={({ isActive }) =>
-            `flex items-center justify-between gap-2.5 rounded-md px-3 py-2 text-sm ${
-              activePage === 'endpoints' && isActive
-                ? 'bg-emerald-400/10 font-medium text-emerald-200'
-                : 'text-slate-300 hover:bg-white/5 hover:text-white'
-            }`
-          }
-        >
-          <span className="flex items-center gap-2.5"><Globe2 size={16} /> Endpoints</span>
-          {monitorCount !== undefined && (
-            <span className="rounded-md bg-white/5 px-1.5 py-0.5 text-xs text-slate-300">{monitorCount}</span>
-          )}
+          Monitors
         </NavLink>
       </nav>
 
