@@ -11,46 +11,53 @@ export function startMonitorScheduler() {
         const now = new Date();
 
         const monitors = await Monitor.find({
+          isPaused: { $ne: true },
           $or: [
-            { lastCheckedAt: null },
-            { lastCheckedAt: { $exists: false } },
-            {
-              $expr: {
-                $lte: [
-                  {
-                    $add: [
-                      "$lastCheckedAt",
-                      { $multiply: ["$intervalSeconds", 1000] },
-                    ],
-                  },
-                  now,
-                ],
+              { lastCheckedAt: null },
+              { lastCheckedAt: { $exists: false } },
+              {
+                $expr: {
+                  $lte: [
+                    {
+                      $add: [
+                        "$lastCheckedAt",
+                        { $multiply: ["$intervalSeconds", 1000] },
+                      ],
+                    },
+                    now,
+                  ],
+                },
               },
-            },
           ],
         });
 
         for (const monitor of monitors) {
           try {
-            const outcome = await performApiCheck(monitor);
+            const activeMonitor = await Monitor.findOne({
+              _id: monitor._id,
+              isPaused: { $ne: true },
+            });
+            if (!activeMonitor) continue;
+
+            const outcome = await performApiCheck(activeMonitor);
             const checkedAt = new Date();
 
             await Check.create({
-              monitorId: monitor._id,
-              userId: monitor.userId,
+              monitorId: activeMonitor._id,
+              userId: activeMonitor.userId,
               ...outcome,
               checkedAt,
             });
 
             if (outcome.status !== "RATE_LIMITED") {
-              monitor.currentStatus = outcome.status;
+              activeMonitor.currentStatus = outcome.status;
             }
 
-            monitor.lastCheckedAt = checkedAt;
-            await monitor.save();
+            activeMonitor.lastCheckedAt = checkedAt;
+            await activeMonitor.save();
 
             console.log(
-              `Monitor ${monitor._id}: ${outcome.status}, ` +
+              `Monitor ${activeMonitor._id}: ${outcome.status}, ` +
                 `${outcome.responseTimeMs} ms`,
             );
           } catch (error) {

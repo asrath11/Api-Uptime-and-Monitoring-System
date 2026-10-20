@@ -139,7 +139,7 @@ export const analyticsMonitor = asyncWrapper(
       ...match,
       checkedAt: { $gte: since, $lte: new Date(now) },
     };
-    const [summary, hourlyTrend] = await Promise.all([
+    const [summary, hourlyTrend, latestResponseChecks] = await Promise.all([
       Check.aggregate([
         { $match: rangeMatch },
         {
@@ -147,6 +147,8 @@ export const analyticsMonitor = asyncWrapper(
             _id: null,
             count: { $sum: 1 },
             avgResponseTime: { $avg: "$responseTimeMs" },
+            minResponseTime: { $min: "$responseTimeMs" },
+            maxResponseTime: { $max: "$responseTimeMs" },
             success: {
               $sum: {
                 $cond: [{ $eq: ["$status", "UP"] }, 1, 0],
@@ -169,6 +171,8 @@ export const analyticsMonitor = asyncWrapper(
             _id: 0,
             status: 1,
             avgResponseTime: { $floor: "$avgResponseTime" },
+            minResponseTime: 1,
+            maxResponseTime: 1,
             success: 1,
             count: 1,
             failure: 1,
@@ -203,6 +207,8 @@ export const analyticsMonitor = asyncWrapper(
               },
             },
             avgResponseTime: { $avg: "$responseTimeMs" },
+            minResponseTime: { $min: "$responseTimeMs" },
+            maxResponseTime: { $max: "$responseTimeMs" },
             successful: {
               $sum: { $cond: [{ $eq: ["$status", "UP"] }, 1, 0] },
             },
@@ -220,6 +226,8 @@ export const analyticsMonitor = asyncWrapper(
             _id: 0,
             timestamp: "$_id",
             avgResponseTime: { $floor: "$avgResponseTime" },
+            minResponseTime: { $floor: "$minResponseTime" },
+            maxResponseTime: { $floor: "$maxResponseTime" },
             successful: 1,
             failed: 1,
             rateLimited: 1,
@@ -229,7 +237,21 @@ export const analyticsMonitor = asyncWrapper(
         { $sort: { timestamp: 1 } },
         { $limit: bucketCount },
       ]),
+      Check.aggregate([
+        { $match: rangeMatch },
+        { $sort: { checkedAt: -1 } },
+        { $limit: 5000 },
+        {
+          $project: {
+            _id: 0,
+            timestamp: "$checkedAt",
+            responseMs: "$responseTimeMs",
+          },
+        },
+      ]),
     ]);
+    const responseChecks = latestResponseChecks.reverse();
+    const responseChecksTruncated = (summary[0]?.count ?? 0) > responseChecks.length;
 
     res.status(200).json({
       success: true,
@@ -246,6 +268,8 @@ export const analyticsMonitor = asyncWrapper(
           }),
           range,
           trend: hourlyTrend,
+          responseChecks,
+          responseChecksTruncated,
         },
       },
     });

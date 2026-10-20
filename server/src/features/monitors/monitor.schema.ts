@@ -18,6 +18,9 @@ export const createMonitorSchema = z.object({
 
 export const partialUpdateMonitorSchema = createMonitorSchema
   .partial()
+  .extend({
+    isPaused: z.boolean().optional(),
+  })
   .refine(
     (data) => Object.keys(data).length > 0,
     "At least one field must be provided",

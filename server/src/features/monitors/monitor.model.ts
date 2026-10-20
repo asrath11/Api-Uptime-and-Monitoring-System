@@ -8,6 +8,7 @@ export interface IMonitor extends Document {
   intervalSeconds: number;
   timeoutSeconds: number;
   expectedStatusCode: number;
+  isPaused: boolean;
   currentStatus: "UP" | "DOWN" | "UNKNOWN";
   lastCheckedAt: Date | null;
 }
@@ -51,6 +52,10 @@ const monitorSchema = new mongoose.Schema<IMonitor>(
       default: 200,
       min: 100,
       max: 599,
+    },
+    isPaused: {
+      type: Boolean,
+      default: false,
     },
     currentStatus: {
       type: String,
