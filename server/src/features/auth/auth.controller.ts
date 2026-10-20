@@ -15,17 +15,21 @@ export const register = asyncWrapper(async (req: Request, res: Response) => {
     });
   }
   const user = await User.create({ name, email, password });
-  const token = generateToken(res, user._id.toString());
+  generateToken(res, user._id.toString());
 
   res.status(201).json({
     success: true,
     message: "User registered successfully",
-    token,
+    user: {
+      id: user._id.toString(),
+      name: user.name,
+      email: user.email,
+    },
   });
 });
 
 export const login = asyncWrapper(async (req: Request, res: Response) => {
-  const { email, password } = req.body as LoginInput;
+  const { email, password, remember } = req.body as LoginInput;
   const user = await User.findOne({ email }).select("+password");
   const isPasswordMatched = user && (await user.comparePassword(password));
   if (!user || !isPasswordMatched) {
@@ -34,11 +38,34 @@ export const login = asyncWrapper(async (req: Request, res: Response) => {
       message: "Invalid email or password",
     });
   }
-  const token = generateToken(res, user._id.toString());
+  generateToken(res, user._id.toString(), remember);
   res.status(200).json({
     success: true,
     message: "User logged in successfully",
-    token,
+    user: {
+      id: user._id.toString(),
+      name: user.name,
+      email: user.email,
+    },
+  });
+});
+
+export const getCurrentUser = asyncWrapper(async (req: Request, res: Response) => {
+  if (!req.user) {
+    res.status(401).json({
+      success: false,
+      message: "Not authorized",
+    });
+    return;
+  }
+
+  res.status(200).json({
+    success: true,
+    user: {
+      id: req.user._id,
+      name: req.user.name,
+      email: req.user.email,
+    },
   });
 });
 

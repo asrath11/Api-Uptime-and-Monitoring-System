@@ -3,13 +3,18 @@ import jwt,{type SignOptions} from 'jsonwebtoken';
 import { JWT_SECRET,JWT_EXPIRES_IN} from '@/config/consonants.js';
 
 
-export const generateToken = (res:Response,userId: string): string => {
+export const generateToken = (
+  res: Response,
+  userId: string,
+  remember = true,
+): string => {
   const token = jwt.sign({ userId }, JWT_SECRET, { expiresIn: JWT_EXPIRES_IN } as SignOptions);
-  res.cookie("jwt", token, { 
-    httpOnly: true, secure: process.env.NODE_ENV === "production",
-    sameSite: "strict", 
-    maxAge: 1000 * 60 * 60 * 24 * 7, // 7 days
-    path: "/", 
+  res.cookie("jwt", token, {
+    httpOnly: true,
+    secure: process.env.NODE_ENV === "production",
+    sameSite: "strict",
+    ...(remember ? { maxAge: 1000 * 60 * 60 * 24 * 7 } : {}),
+    path: "/",
   });
   return token;
 };
