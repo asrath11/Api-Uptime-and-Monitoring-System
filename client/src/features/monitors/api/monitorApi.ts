@@ -6,6 +6,8 @@ const API_BASE_URL = (import.meta.env.VITE_API_BASE_URL || '/api').replace(
   '',
 )
 
+export type AnalyticsRange = '24h' | '7d' | '30d'
+
 const monitorSchema = z.object({
   _id: z.string(),
   name: z.string(),
@@ -13,7 +15,6 @@ const monitorSchema = z.object({
   method: z.enum(['GET', 'POST', 'PUT', 'DELETE']),
   intervalSeconds: z.number(),
   timeoutSeconds: z.number(),
-  expectedStatusCode: z.number(),
   currentStatus: z.enum(['UP', 'DOWN', 'UNKNOWN']),
   lastCheckedAt: z.string().nullable(),
 })
@@ -36,6 +37,33 @@ const checkResponseSchema = z.object({
   }),
 })
 
+const analyticsResponseSchema = z.object({
+  success: z.literal(true),
+  data: z.object({
+    monitorId: z.string(),
+    analytics: z.object({
+      range: z.enum(['24h', '7d', '30d']),
+      count: z.number(),
+      avgResponseTime: z.number(),
+      success: z.number(),
+      failure: z.number(),
+      rateLimited: z.number().optional(),
+      rateLimitedCount: z.number().optional(),
+      upTimePercentage: z.number(),
+      trend: z.array(
+        z.object({
+          timestamp: z.string(),
+          avgResponseTime: z.number(),
+          successful: z.number(),
+          failed: z.number(),
+          rateLimited: z.number(),
+          count: z.number(),
+        }),
+      ),
+    }),
+  }),
+})
+
 export type Monitor = z.infer<typeof monitorSchema>
 export type NewMonitor = {
   name: string
@@ -43,9 +71,9 @@ export type NewMonitor = {
   method: Monitor['method']
   intervalSeconds: number
   timeoutSeconds: number
-  expectedStatusCode: number
 }
 export type MonitorCheck = z.infer<typeof checkResponseSchema>['data']
+export type MonitorAnalytics = z.infer<typeof analyticsResponseSchema>['data']['analytics']
 
 export class MonitorApiError extends Error {
   readonly status: number
@@ -60,7 +88,7 @@ export class MonitorApiError extends Error {
 async function request(
   path: string,
   options: {
-    method?: 'GET' | 'POST'
+    method?: 'GET' | 'POST' | 'PATCH' | 'DELETE'
     data?: unknown
   } = {},
 ): Promise<unknown> {
@@ -114,7 +142,7 @@ export async function createMonitor(
 ): Promise<Monitor> {
   const payload = await request('/monitors', {
     method: 'POST',
-    data: monitor,
+    data: { ...monitor, expectedStatusCode: 200 },
   })
   const result = createMonitorResponseSchema.safeParse(payload)
   if (!result.success) {
@@ -124,6 +152,66 @@ export async function createMonitor(
     )
   }
   return result.data.data
+}
+
+export async function updateMonitor(
+  monitorId: string,
+  updates: Partial<NewMonitor>,
+): Promise<Monitor> {
+  const payload = await request(`/monitors/${monitorId}`, {
+    method: 'PATCH',
+    data: updates,
+  })
+  const result = createMonitorResponseSchema.safeParse(payload)
+  if (!result.success) {
+    throw new MonitorApiError(
+      'The server returned an unexpected monitor response.',
+      502,
+    )
+  }
+  return result.data.data
+}
+
+export async function deleteMonitor(monitorId: string): Promise<void> {
+  const payload = await request(`/monitors/${monitorId}`, {
+    method: 'DELETE',
+  })
+  const result = z.object({ success: z.literal(true) }).safeParse(payload)
+  if (!result.success) {
+    throw new MonitorApiError(
+      'The server returned an unexpected delete response.',
+      502,
+    )
+  }
+}
+
+export async function getMonitor(monitorId: string): Promise<Monitor> {
+  const payload = await request(`/monitors/${monitorId}`)
+  const result = createMonitorResponseSchema.safeParse(payload)
+  if (!result.success) {
+    throw new MonitorApiError(
+      'The server returned an unexpected monitor response.',
+      502,
+    )
+  }
+  return result.data.data
+}
+
+export async function getMonitorAnalytics(
+  monitorId: string,
+  range: AnalyticsRange = '24h',
+): Promise<MonitorAnalytics> {
+  const payload = await request(
+    `/monitors/${monitorId}/analytics?range=${range}`,
+  )
+  const result = analyticsResponseSchema.safeParse(payload)
+  if (!result.success) {
+    throw new MonitorApiError(
+      'The server returned unexpected monitor analytics.',
+      502,
+    )
+  }
+  return result.data.data.analytics
 }
 
 export async function runMonitorCheck(

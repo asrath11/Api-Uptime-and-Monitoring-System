@@ -1,7 +1,6 @@
 import { useCallback, useEffect, useState, type FormEvent, type ReactNode } from 'react'
-import { Link, useNavigate } from 'react-router-dom'
+import { useLocation, useNavigate } from 'react-router-dom'
 import {
-  Activity,
   AlertTriangle,
   Check,
   CheckCircle2,
@@ -9,7 +8,6 @@ import {
   ExternalLink,
   Globe2,
   LoaderCircle,
-  LogOut,
   Plus,
   RefreshCw,
   Server,
@@ -21,6 +19,7 @@ import { Badge } from '../../../components/ui/badge'
 import { Button } from '../../../components/ui/button'
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '../../../components/ui/card'
 import { Input } from '../../../components/ui/input'
+import { WorkspaceSidebar } from '../../monitors/components/WorkspaceSidebar'
 import { AuthApiError } from '../api/authApi'
 import { useAuth } from '../context/useAuth'
 import {
@@ -37,7 +36,6 @@ const monitorFormSchema = z.object({
   method: z.enum(['GET', 'POST', 'PUT', 'DELETE']),
   intervalSeconds: z.coerce.number().int().min(1),
   timeoutSeconds: z.coerce.number().int().min(1),
-  expectedStatusCode: z.coerce.number().int().min(100).max(599),
 })
 
 const statusLabels: Record<Monitor['currentStatus'], string> = {
@@ -73,12 +71,15 @@ function getHostname(url: string) {
 export default function DashboardPage() {
   const { user, logout } = useAuth()
   const navigate = useNavigate()
+  const location = useLocation()
   const [monitors, setMonitors] = useState<Monitor[]>([])
   const [isLoading, setIsLoading] = useState(true)
   const [isRefreshing, setIsRefreshing] = useState(false)
   const [isSubmitting, setIsSubmitting] = useState(false)
   const [checkingMonitorId, setCheckingMonitorId] = useState<string | null>(null)
-  const [showCreateForm, setShowCreateForm] = useState(false)
+  const [showCreateForm, setShowCreateForm] = useState(
+    () => new URLSearchParams(location.search).get('addMonitor') === 'true',
+  )
   const [error, setError] = useState('')
   const [feedback, setFeedback] = useState('')
   const [isSigningOut, setIsSigningOut] = useState(false)
@@ -118,9 +119,6 @@ export default function DashboardPage() {
   const downCount = monitors.filter((monitor) => monitor.currentStatus === 'DOWN').length
   const unknownCount = monitors.filter((monitor) => monitor.currentStatus === 'UNKNOWN').length
   const firstName = user?.name.trim().split(/\s+/)[0] || 'there'
-  const initials =
-    user?.name.trim().split(/\s+/).map((part) => part[0]).slice(0, 2).join('').toUpperCase() || 'PW'
-
   const handleCreateMonitor = async (event: FormEvent<HTMLFormElement>) => {
     event.preventDefault()
     setError('')
@@ -132,7 +130,6 @@ export default function DashboardPage() {
       method: formData.get('method'),
       intervalSeconds: formData.get('intervalSeconds'),
       timeoutSeconds: formData.get('timeoutSeconds'),
-      expectedStatusCode: formData.get('expectedStatusCode'),
     })
 
     if (!parsed.success) {
@@ -200,74 +197,13 @@ export default function DashboardPage() {
 
   return (
     <main className="min-h-screen bg-muted/30 text-foreground md:flex">
-      <aside className="flex items-center justify-between gap-4 bg-slate-950 px-4 py-3 text-slate-100 md:sticky md:top-0 md:h-screen md:w-60 md:flex-col md:items-stretch md:justify-start md:px-4 md:py-6">
-        <Link className="flex items-center gap-2.5 text-lg font-semibold tracking-tight" to="/dashboard">
-          <span className="grid size-8 place-items-center rounded-lg border border-emerald-300/20 bg-emerald-300/10 text-emerald-300">
-            <Activity size={18} />
-          </span>
-          pulsewatch
-        </Link>
-
-        <nav className="flex items-center gap-1 md:mt-12 md:flex-col md:items-stretch" aria-label="Main navigation">
-          <a
-            className="flex items-center gap-2.5 rounded-md bg-emerald-400/10 px-3 py-2 text-sm font-medium text-emerald-200"
-            href="#overview"
-            aria-current="page"
-          >
-            <Activity size={16} />
-            Overview
-          </a>
-          <a
-            className="hidden items-center justify-between gap-2.5 rounded-md px-3 py-2 text-sm text-slate-300 hover:bg-white/5 hover:text-white sm:flex"
-            href="#endpoints"
-          >
-            <span className="flex items-center gap-2.5"><Globe2 size={16} /> Endpoints</span>
-            <Badge className="border-white/10 bg-white/5 text-slate-300">{monitors.length}</Badge>
-          </a>
-        </nav>
-
-        <Card className="hidden border-white/10 bg-white/5 text-slate-100 shadow-none md:mt-auto md:block">
-          <CardContent className="flex items-center gap-3 p-3">
-            <ShieldCheck className="size-5 shrink-0 text-emerald-300" />
-            <div className="min-w-0">
-              <p className="text-xs font-medium">Monitoring active</p>
-              <p className="mt-1 text-[11px] text-slate-400">Checks run automatically</p>
-            </div>
-            <span className="ml-auto size-2 shrink-0 rounded-full bg-emerald-400" />
-          </CardContent>
-        </Card>
-
-        <div className="hidden border-t border-white/10 pt-4 md:block">
-          <div className="mb-3 flex min-w-0 items-center gap-2.5">
-            <span className="grid size-8 shrink-0 place-items-center rounded-lg bg-emerald-300/10 text-xs font-semibold text-emerald-200">
-              {initials}
-            </span>
-            <div className="min-w-0">
-              <p className="truncate text-xs font-medium">{user?.name}</p>
-              <p className="truncate text-[11px] text-slate-400">{user?.email}</p>
-            </div>
-          </div>
-          <Button
-            className="w-full justify-start text-slate-300 hover:bg-white/5 hover:text-white"
-            variant="ghost"
-            onClick={handleLogout}
-            disabled={isSigningOut}
-          >
-            {isSigningOut ? <LoaderCircle className="animate-spin" /> : <LogOut />}
-            {isSigningOut ? 'Signing out…' : 'Sign out'}
-          </Button>
-        </div>
-        <Button
-          className="md:hidden"
-          size="icon"
-          variant="ghost"
-          aria-label="Sign out"
-          onClick={handleLogout}
-          disabled={isSigningOut}
-        >
-          {isSigningOut ? <LoaderCircle className="animate-spin" /> : <LogOut />}
-        </Button>
-      </aside>
+      <WorkspaceSidebar
+        user={user}
+        activePage="overview"
+        monitorCount={monitors.length}
+        onSignOut={() => void handleLogout()}
+        isSigningOut={isSigningOut}
+      />
 
       <div className="min-w-0 flex-1">
         <header className="sticky top-0 z-10 flex h-14 items-center justify-between border-b bg-background/95 px-4 backdrop-blur sm:px-6 lg:px-10">
@@ -358,9 +294,6 @@ export default function DashboardPage() {
                   <FormField label="Timeout (sec)">
                     <Input name="timeoutSeconds" type="number" min="1" defaultValue="10" required />
                   </FormField>
-                  <FormField label="Expected status">
-                    <Input name="expectedStatusCode" type="number" min="100" max="599" defaultValue="200" required />
-                  </FormField>
                   <div className="flex justify-end gap-2 sm:col-span-2 lg:col-span-3">
                     <Button type="button" variant="outline" onClick={() => setShowCreateForm(false)} disabled={isSubmitting}>Cancel</Button>
                     <Button type="submit" disabled={isSubmitting}>
@@ -373,10 +306,12 @@ export default function DashboardPage() {
             </Card>
           )}
 
-          <section className="space-y-3" id="endpoints">
+          <section className="scroll-mt-20 space-y-3" id="endpoints">
             <div className="flex items-end justify-between gap-3">
               <div>
-                <h2 className="text-base font-semibold tracking-tight">Monitored endpoints</h2>
+                <h2 className="text-base font-semibold tracking-tight">
+                  Monitored endpoints
+                </h2>
                 <p className="mt-1 text-xs text-muted-foreground">Availability and check configuration for your APIs.</p>
               </div>
               {monitors.length > 0 && <Badge className="border-border bg-background text-muted-foreground">{monitors.length} {monitors.length === 1 ? 'endpoint' : 'endpoints'}</Badge>}

@@ -8,6 +8,8 @@ import { AuthProvider } from './features/auth/context/AuthProvider'
 import DashboardPage from './features/auth/pages/DashboardPage'
 import LoginPage from './features/auth/pages/LoginPage'
 import SignupPage from './features/auth/pages/SignupPage'
+import EndpointsPage from './features/monitors/pages/EndpointsPage'
+import MonitorDetailsPage from './features/monitors/pages/MonitorDetailsPage'
 
 function App() {
   return (
@@ -21,6 +23,8 @@ function App() {
           </Route>
           <Route element={<ProtectedRoute />}>
             <Route path="/dashboard" element={<DashboardPage />} />
+            <Route path="/endpoints" element={<EndpointsPage />} />
+            <Route path="/endpoints/:monitorId" element={<MonitorDetailsPage />} />
           </Route>
           <Route path="*" element={<Navigate to="/" replace />} />
         </Routes>
