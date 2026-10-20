@@ -40,14 +40,54 @@ export const getCheckHistory = asyncWrapper(
       });
     }
 
-    const checks = await Check.find({
+    const parsePositiveInteger = (
+      value: unknown,
+      defaultValue: number,
+    ): number | null => {
+      if (value === undefined) return defaultValue;
+      if (typeof value !== "string" || !/^[1-9]\d*$/.test(value)) {
+        return null;
+      }
+      const parsed = Number(value);
+      return Number.isSafeInteger(parsed) ? parsed : null;
+    };
+
+    const page = parsePositiveInteger(req.query.page, 1);
+    const limit = parsePositiveInteger(req.query.limit, 25);
+
+    if (
+      page === null ||
+      limit === null ||
+      limit > 100 ||
+      !Number.isSafeInteger((page - 1) * limit)
+    ) {
+      return res.status(400).json({
+        success: false,
+        message: "Page must be positive and limit must be between 1 and 100",
+      });
+    }
+
+    const filter = {
       monitorId: monitor._id,
       userId,
-    }).sort({ checkedAt: -1 });
+    };
+    const [checks, total] = await Promise.all([
+      Check.find(filter)
+        .sort({ checkedAt: -1 })
+        .skip((page - 1) * limit)
+        .limit(limit),
+      Check.countDocuments(filter),
+    ]);
 
     return res.status(200).json({
       success: true,
       data: checks,
+      pagination: {
+        page,
+        limit,
+        total,
+        totalPages: Math.ceil(total / limit),
+      },
     });
   },
 );
