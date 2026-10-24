@@ -1,3 +1,4 @@
+import { memo } from "react";
 import {
   Bar,
   BarChart,
@@ -118,7 +119,7 @@ const axisTickStyle = {
   fontSize: 11,
 };
 
-export default function MonitorAnalyticsCharts({
+function MonitorAnalyticsCharts({
   analytics,
   range,
 }: {
@@ -206,7 +207,7 @@ export default function MonitorAnalyticsCharts({
                     type="monotone"
                     dataKey="responseMs"
                     name="Response time"
-                    stroke="#0d8a65"
+                    stroke="var(--chart-1)"
                     strokeWidth={2}
                     dot={false}
                     activeDot={{ r: 4 }}
@@ -237,23 +238,25 @@ export default function MonitorAnalyticsCharts({
               {
                 label: "Average",
                 value: analytics.avgResponseTime,
-                color: "#2B2C28",
+                className:
+                  "bg-secondary border-secondary-foreground/30 text-secondary-foreground",
               },
               {
                 label: "Minimum",
                 value: analytics.minResponseTime,
-                color: "#0d8a65",
+                className:
+                  "bg-success/10 border-success/30 text-success-foreground",
               },
               {
                 label: "Maximum",
                 value: analytics.maxResponseTime,
-                color: "#880d1e",
+                className:
+                  "bg-destructive/10 border-destructive/30 text-destructive-foreground",
               },
-            ].map(({ label, value, color }) => (
+            ].map(({ label, value, className }) => (
               <div
                 key={label}
-                className="min-w-0 rounded-md border px-3 py-2 text-white"
-                style={{ backgroundColor: color }}
+                className={`min-w-0 rounded-md border px-3 py-2 ${className}`}
               >
                 <p className="text-[11px] opacity-80">{label}</p>
 
@@ -328,7 +331,7 @@ export default function MonitorAnalyticsCharts({
                 dataKey="successful"
                 name="Successful"
                 stackId="checks"
-                fill="#0d8a65"
+                fill="var(--success)"
                 radius={[2, 2, 0, 0]}
                 isAnimationActive={false}
               />
@@ -337,7 +340,7 @@ export default function MonitorAnalyticsCharts({
                 dataKey="failed"
                 name="Failed"
                 stackId="checks"
-                fill="#dc5b54"
+                fill="var(--destructive)"
                 isAnimationActive={false}
               />
 
@@ -345,7 +348,7 @@ export default function MonitorAnalyticsCharts({
                 dataKey="rateLimited"
                 name="Rate limited"
                 stackId="checks"
-                fill="#e7a23b"
+                fill="var(--warning)"
                 isAnimationActive={false}
               />
             </BarChart>
@@ -355,3 +358,5 @@ export default function MonitorAnalyticsCharts({
     </div>
   );
 }
+
+export default memo(MonitorAnalyticsCharts);

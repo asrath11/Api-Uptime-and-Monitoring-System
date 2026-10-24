@@ -13,13 +13,13 @@ function Toaster() {
       toastOptions={{
         classNames: {
           toast: 'group toast shadow-lg',
-          success: 'border-emerald-600 bg-emerald-600 text-white',
-          info: 'border-sky-600 bg-sky-600 text-white',
-          warning: 'border-amber-500 bg-amber-500 text-slate-950',
-          error: 'border-red-600 bg-red-600 text-white',
-          description: 'text-current/80',
-          actionButton: 'bg-black/10 text-inherit hover:bg-black/20',
-          cancelButton: 'bg-black/10 text-inherit hover:bg-black/20',
+          success: 'border-success/30 bg-success/10 text-success',
+          info: 'border-info/30 bg-info/10 text-info',
+          warning: 'border-warning/30 bg-warning/10 text-warning',
+          error: 'border-destructive/30 bg-destructive/10 text-destructive',
+          description: 'text-current/75',
+          actionButton: 'bg-black/5 text-inherit hover:bg-black/10 dark:bg-white/10 dark:hover:bg-white/15',
+          cancelButton: 'bg-black/5 text-inherit hover:bg-black/10 dark:bg-white/10 dark:hover:bg-white/15',
         },
       }}
     />

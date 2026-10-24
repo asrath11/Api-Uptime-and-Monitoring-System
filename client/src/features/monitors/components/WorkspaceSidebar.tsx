@@ -19,10 +19,10 @@ export function WorkspaceSidebar({
     user?.name.trim().split(/\s+/).map((part) => part[0]).slice(0, 2).join('').toUpperCase() || 'PW'
 
   return (
-    <aside className="flex items-center justify-between gap-4 bg-slate-950 px-4 py-3 text-slate-100 md:sticky md:top-0 md:h-screen md:w-60 md:flex-col md:items-stretch md:justify-start md:px-4 md:py-6">
+    <aside className="flex items-center justify-between gap-4 border-b border-sidebar-border bg-sidebar px-4 py-3 text-sidebar-foreground md:sticky md:top-0 md:h-screen md:w-60 md:flex-col md:items-stretch md:justify-start md:border-b-0 md:border-r md:px-4 md:py-6">
       <div className="flex items-center justify-between gap-2">
         <Link className="flex items-center gap-2.5 text-lg font-semibold tracking-tight" to="/dashboard">
-          <span className="grid size-8 place-items-center rounded-lg border border-emerald-300/20 bg-emerald-300/10 text-emerald-300">
+          <span className="grid size-8 place-items-center rounded-lg border border-sidebar-primary/20 bg-sidebar-primary/10 text-sidebar-primary">
             <Activity size={18} />
           </span>
           pulsewatch
@@ -35,8 +35,8 @@ export function WorkspaceSidebar({
           to="/dashboard"
           className={({ isActive }) => `flex items-center gap-2.5 rounded-md px-3 py-2 text-sm font-medium ${
             isActive || location.pathname.startsWith('/analytics/')
-              ? 'bg-emerald-400/10 text-emerald-200'
-              : 'text-slate-300 hover:bg-white/5 hover:text-white'
+              ? 'bg-sidebar-accent text-sidebar-accent-foreground'
+              : 'text-sidebar-foreground/75 hover:bg-sidebar-accent/70 hover:text-sidebar-foreground'
           }`}
         >
           <Activity size={16} />
@@ -44,28 +44,28 @@ export function WorkspaceSidebar({
         </NavLink>
       </nav>
 
-      <Card className="hidden border-white/10 bg-white/5 text-slate-100 shadow-none md:mt-auto md:block">
+      <Card className="hidden border-sidebar-border bg-sidebar-accent/50 text-sidebar-foreground shadow-none md:mt-auto md:block">
         <CardContent className="flex items-center gap-3 p-3">
-          <span className="size-2 shrink-0 rounded-full bg-emerald-400" />
+          <span className="size-2 shrink-0 rounded-full bg-sidebar-primary" />
           <div className="min-w-0">
             <p className="text-xs font-medium">Monitoring active</p>
-            <p className="mt-1 text-[11px] text-slate-400">Checks run automatically</p>
+            <p className="mt-1 text-[11px] text-sidebar-foreground/60">Checks run automatically</p>
           </div>
         </CardContent>
       </Card>
 
-      <div className="hidden border-t border-white/10 pt-4 md:block">
+      <div className="hidden border-t border-sidebar-border pt-4 md:block">
         <div className="mb-3 flex min-w-0 items-center gap-2.5">
-          <span className="grid size-8 shrink-0 place-items-center rounded-lg bg-emerald-300/10 text-xs font-semibold text-emerald-200">
+          <span className="grid size-8 shrink-0 place-items-center rounded-lg bg-sidebar-primary/10 text-xs font-semibold text-sidebar-primary">
             {initials}
           </span>
           <div className="min-w-0">
             <p className="truncate text-xs font-medium">{user?.name}</p>
-            <p className="truncate text-[11px] text-slate-400">{user?.email}</p>
+            <p className="truncate text-[11px] text-sidebar-foreground/60">{user?.email}</p>
           </div>
         </div>
         <Button
-          className="w-full justify-start text-slate-300 hover:bg-white/5 hover:text-white"
+          className="w-full justify-start text-sidebar-foreground/75 hover:bg-sidebar-accent hover:text-sidebar-foreground"
           variant="ghost"
           onClick={onSignOut}
           disabled={isSigningOut}

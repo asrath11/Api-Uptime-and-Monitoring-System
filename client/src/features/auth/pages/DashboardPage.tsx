@@ -306,8 +306,8 @@ export default function DashboardPage() {
         <div className="mx-auto max-w-7xl space-y-7 px-4 py-8 sm:px-6 lg:px-10">
           <section className="flex flex-wrap items-end justify-between gap-4" id="overview">
             <div>
-              <div className="flex items-center gap-2 text-xs font-semibold tracking-wider text-emerald-700">
-                <span className="size-2 rounded-full bg-emerald-500" />
+              <div className="flex items-center gap-2 text-xs font-semibold tracking-wider text-success">
+                <span className="size-2 rounded-full bg-success" />
                 LIVE MONITORING
               </div>
               <h1 className="mt-2 text-2xl font-semibold tracking-tight sm:text-3xl">Good to see you, {firstName}</h1>
@@ -322,12 +322,12 @@ export default function DashboardPage() {
             <SummaryCard
               label="Operational"
               value={isLoading ? '—' : upCount}
-              tone="text-emerald-700"
+              tone="success"
             />
             <SummaryCard
               label="Down"
               value={isLoading ? '—' : downCount}
-              tone="text-destructive"
+              tone="destructive"
             />
             <SummaryCard
               label="Awaiting first check"
@@ -336,7 +336,7 @@ export default function DashboardPage() {
             <SummaryCard
               label="Paused"
               value={isLoading ? '—' : pausedCount}
-              tone="text-amber-700"
+              tone="warning"
             />
           </section>
 
@@ -449,7 +449,7 @@ export default function DashboardPage() {
             ) : monitors.length === 0 ? (
               <Card>
                 <CardContent className="flex min-h-64 flex-col items-center justify-center p-8 text-center">
-                  <span className="grid size-12 place-items-center rounded-xl bg-emerald-50 text-emerald-700"><Globe2 size={22} /></span>
+                  <span className="grid size-12 place-items-center rounded-xl bg-success/10 text-success"><Globe2 size={22} /></span>
                   <h3 className="mt-4 text-sm font-semibold">No endpoints yet</h3>
                   <p className="mt-1 max-w-sm text-xs leading-relaxed text-muted-foreground">Add an API endpoint to start tracking its availability and response status.</p>
                   <Button className="mt-4" onClick={() => setShowCreateForm(true)}><Plus /> Add your first monitor</Button>
@@ -464,11 +464,11 @@ export default function DashboardPage() {
                   {monitors.map((monitor) => {
                     const status = monitor.currentStatus.toLowerCase()
                     const statusClass = monitor.isPaused
-                      ? 'border-amber-200 bg-amber-50 text-amber-800'
+                      ? 'border-warning/30 bg-warning/10 text-warning'
                       : status === 'up'
-                      ? 'border-emerald-200 bg-emerald-50 text-emerald-800'
+                      ? 'border-success/30 bg-success/10 text-success'
                       : status === 'down'
-                        ? 'border-red-200 bg-red-50 text-red-800'
+                        ? 'border-destructive/30 bg-destructive/10 text-destructive'
                         : 'border-border bg-muted/40 text-muted-foreground'
 
                     return (
@@ -491,7 +491,7 @@ export default function DashboardPage() {
                             </div>
                           </div>
                         </div>
-                        <div><span className="mr-2 text-[10px] text-muted-foreground md:hidden">Status</span><Badge className={statusClass}><span className={`size-1.5 rounded-full ${monitor.isPaused ? 'bg-amber-600' : status === 'up' ? 'bg-emerald-600' : status === 'down' ? 'bg-red-600' : 'bg-muted-foreground'}`} />{monitor.isPaused ? 'Paused' : statusLabels[monitor.currentStatus]}</Badge></div>
+                        <div><span className="mr-2 text-[10px] text-muted-foreground md:hidden">Status</span><Badge className={statusClass}><span className={`size-1.5 rounded-full ${monitor.isPaused ? 'bg-warning' : status === 'up' ? 'bg-success' : status === 'down' ? 'bg-destructive' : 'bg-muted-foreground'}`} />{monitor.isPaused ? 'Paused' : statusLabels[monitor.currentStatus]}</Badge></div>
                         <div className="text-xs text-muted-foreground"><span className="mr-2 text-[10px] md:hidden">Last checked</span>{formatLastChecked(monitor.lastCheckedAt)}</div>
                         <div className="flex items-center gap-1.5 text-xs text-muted-foreground"><Clock3 size={13} /><span className="md:hidden">Interval · </span>{formatInterval(monitor.intervalSeconds)}</div>
                         <div className="flex flex-wrap items-center gap-2">
@@ -560,7 +560,7 @@ export default function DashboardPage() {
           </section>
 
           <footer className="flex flex-wrap items-center justify-between gap-3 border-t pt-4 text-xs text-muted-foreground">
-            <span className="flex items-center gap-1.5"><ShieldCheck size={14} className="text-emerald-700" /> Your monitoring data is private to your account.</span>
+            <span className="flex items-center gap-1.5"><ShieldCheck size={14} className="text-success" /> Your monitoring data is private to your account.</span>
             <span>Pulsewatch · API monitoring</span>
           </footer>
         </div>

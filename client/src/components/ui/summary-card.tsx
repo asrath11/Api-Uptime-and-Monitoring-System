@@ -3,17 +3,24 @@ import { Card, CardContent } from '@/components/ui/card'
 function SummaryCard({
   label,
   value,
-  tone = 'text-foreground',
+  tone = 'default',
 }: {
   label: string
   value: string | number
-  tone?: string
+  tone?: 'default' | 'success' | 'warning' | 'destructive'
 }) {
+  const toneClass = {
+    default: 'text-foreground',
+    success: 'text-success',
+    warning: 'text-warning',
+    destructive: 'text-destructive',
+  }[tone]
+
   return (
     <Card>
       <CardContent className="p-4">
         <p className="text-xs text-muted-foreground">{label}</p>
-        <p className={`mt-1 text-2xl font-semibold tracking-tight ${tone}`}>{value}</p>
+        <p className={`mt-1 text-2xl font-semibold tracking-tight ${toneClass}`}>{value}</p>
       </CardContent>
     </Card>
   )
